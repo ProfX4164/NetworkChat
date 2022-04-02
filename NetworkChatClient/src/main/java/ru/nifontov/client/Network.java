@@ -1,8 +1,5 @@
-package client;
+package ru.nifontov.client;
 
-import javafx.scene.control.Alert;
-
-import javax.imageio.spi.ServiceRegistry;
 import java.io.DataInputStream;
 import java.io.DataOutputStream;
 import java.io.IOException;
@@ -20,12 +17,21 @@ public class Network {
     private DataOutputStream socketOutput;
     private DataInputStream socketInput;
 
-    public Network(String host, int port) {
+    private static Network INSTANCE;
+
+    public static Network getInstance() {
+        if (INSTANCE == null) {
+            INSTANCE = new Network();
+        }
+        return INSTANCE;
+    }
+
+    private Network(String host, int port) {
         this.port = port;
         this.host = host;
     }
 
-    public Network() {
+    private Network() {
         this(SERVER_HOST, SERVER_PORT);
     }
 
@@ -53,9 +59,12 @@ public class Network {
         }
     }
 
-    public void waitMessage (Consumer<String> messageHandler)  {
+    public void waitMessage(Consumer<String> messageHandler) {
         Thread thread = new Thread(() -> {
             while (true) {
+                if (Thread.currentThread().isInterrupted()) {
+                    return;
+                }
                 try {
                     String message = socketInput.readUTF();
                     messageHandler.accept(message);
@@ -68,5 +77,16 @@ public class Network {
         });
         thread.setDaemon(true);
         thread.start();
+    }
+
+    public void close() {
+        try {
+            socketInput.close();
+            socketOutput.close();
+            socket.close();
+        } catch (IOException e) {
+            System.err.println("Failed to close network");
+            e.printStackTrace();
+        }
     }
 }
